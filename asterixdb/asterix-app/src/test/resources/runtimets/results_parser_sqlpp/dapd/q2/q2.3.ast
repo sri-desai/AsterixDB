@@ -1,0 +1,135 @@
+DataverseUse test
+Query:
+SELECT ELEMENT [
+RecordConstructor [
+  (
+    LiteralExpr [STRING] [sig_id]
+    :
+    Variable [ Name=$sig_id ]
+  )
+  (
+    LiteralExpr [STRING] [total_count]
+    :
+    Variable [ Name=$sig_sponsorship_count ]
+  )
+  (
+    LiteralExpr [STRING] [chapter_breakdown]
+    :
+    Variable [ Name=$by_chapter ]
+  )
+]
+]
+FROM [  FunctionCall Metadata.dataset@1[
+    LiteralExpr [STRING] [Event]
+  ]
+  AS Variable [ Name=$event ]
+,
+  FieldAccessor [
+    Variable [ Name=$event ]
+    Field=sponsoring_sigs
+  ]
+  AS Variable [ Name=$sponsor ]
+]
+Let Variable [ Name=$es ]
+  :=
+  RecordConstructor [
+    (
+      LiteralExpr [STRING] [event]
+      :
+      Variable [ Name=$event ]
+    )
+    (
+      LiteralExpr [STRING] [sponsor]
+      :
+      Variable [ Name=$sponsor ]
+    )
+  ]
+Groupby
+  Variable [ Name=$sig_id ]
+  :=
+  FieldAccessor [
+    Variable [ Name=$sponsor ]
+    Field=sig_id
+  ]
+  GROUP AS Variable [ Name=#1 ]
+  (
+    es:=Variable [ Name=$es ]
+    sponsor:=Variable [ Name=$sponsor ]
+    event:=Variable [ Name=$event ]
+  )
+
+Let Variable [ Name=$sig_sponsorship_count ]
+  :=
+  FunctionCall test.sql-count@1[
+    (
+      SELECT ELEMENT [
+      FieldAccessor [
+        Variable [ Name=#2 ]
+        Field=es
+      ]
+      ]
+      FROM [        Variable [ Name=#1 ]
+        AS Variable [ Name=#2 ]
+      ]
+    )
+  ]
+Let Variable [ Name=$by_chapter ]
+  :=
+  (
+    SELECT ELEMENT [
+    RecordConstructor [
+      (
+        LiteralExpr [STRING] [chapter_name]
+        :
+        Variable [ Name=$chapter_name ]
+      )
+      (
+        LiteralExpr [STRING] [escount]
+        :
+        FunctionCall test.sql-count@1[
+          (
+            SELECT ELEMENT [
+            FieldAccessor [
+              Variable [ Name=#4 ]
+              Field=e
+            ]
+            ]
+            FROM [              Variable [ Name=#3 ]
+              AS Variable [ Name=#4 ]
+            ]
+          )
+        ]
+      )
+    ]
+    ]
+    FROM [      Variable [ Name=$es ]
+      AS Variable [ Name=$e ]
+    ]
+    Groupby
+      Variable [ Name=$chapter_name ]
+      :=
+      FieldAccessor [
+        FieldAccessor [
+          Variable [ Name=$e ]
+          Field=sponsor
+        ]
+        Field=chapter_name
+      ]
+      GROUP AS Variable [ Name=#3 ]
+      (
+        e:=Variable [ Name=$e ]
+        sig_sponsorship_count:=Variable [ Name=$sig_sponsorship_count ]
+        es:=Variable [ Name=$es ]
+        event:=Variable [ Name=$event ]
+        sponsor:=Variable [ Name=$sponsor ]
+        sig_id:=Variable [ Name=$sig_id ]
+        #1:=Variable [ Name=#1 ]
+      )
+
+  )
+Orderby
+  Variable [ Name=$sig_sponsorship_count ]
+  DESC
+
+Limit
+  LiteralExpr [LONG] [5]
